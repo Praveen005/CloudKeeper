@@ -8,6 +8,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 )
 
+require golang.org/x/sys v0.0.0-20180926160741-c2ed4eda69e7
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.3 // indirect
@@ -25,4 +27,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.3 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
+	github.com/rjeczalik/notify v0.9.3
 )

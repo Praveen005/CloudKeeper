@@ -27,6 +27,7 @@ func main() {
 	if err := run(); err != nil {
 		log.Fatalf("[ERROR] %v", err)
 	}
+	watch()
 }
 
 func run() error {
