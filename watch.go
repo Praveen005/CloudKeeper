@@ -14,12 +14,17 @@ const (
 	changeChannelBufferSize = 1000
 )
 
-type FileChange struct {
-	Filepath string
-	Event    string
+type FileChangeEvent struct {
+	Action   string
 }
 
-func watch() {
+var FilesToUpdate map[string]FileChangeEvent
+
+func init() {
+	FilesToUpdate = make(map[string]FileChangeEvent)
+}
+
+func watch(ctx context.Context) {
 	c := make(chan notify.EventInfo, changeChannelBufferSize)
 
 	regularEvents := make(chan notify.EventInfo, 1)
@@ -29,9 +34,6 @@ func watch() {
 		log.Fatal(err)
 	}
 	defer notify.Stop(c)
-
-	ctx, canncel := context.WithCancel(context.Background())
-	defer canncel()
 
 	go directEvents(ctx, c, regularEvents, renameEvents)
 	go handleRegularEvents(ctx, regularEvents)
@@ -57,16 +59,14 @@ func directEvents(ctx context.Context, c, regularEvents, renameEvents chan notif
 	}
 }
 
-
 func handleRegularEvents(ctx context.Context, regularEvents chan notify.EventInfo) {
 	for {
 		select {
-		case eventInfo := <-regularEvents:
-			f := FileChange{
-				Event:    eventInfo.Event().String(),
-				Filepath: eventInfo.Path(),
+		case ei := <-regularEvents:
+			if _, ok := FilesToUpdate[ei.Path()]; !ok {
+				addEvent(ei, true)
 			}
-			fmt.Println("File change event: ", f)
+			fmt.Println("File change event: ", ei.Event().String())
 		case <-ctx.Done():
 			return
 		}
@@ -88,14 +88,32 @@ func handleRenameEvents(ctx context.Context, renameEvents chan notify.EventInfo)
 			switch ei.Event() {
 			case notify.InMovedFrom:
 				info.From = ei.Path()
+				if _, ok := FilesToUpdate[info.From]; !ok {
+					addEvent(ei, false)
+				}
+
 				fmt.Println("File moved from: ", info.From)
 			case notify.InMovedTo:
 				info.To = ei.Path()
+				if _, ok := FilesToUpdate[info.To]; !ok {
+					addEvent(ei, true)
+				}
 				fmt.Println("File moved to: ", info.To)
 			}
-			
+
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func addEvent(ei notify.EventInfo, add bool) {
+	f := FileChangeEvent{}
+	if add {
+		f.Action = "add"
+		FilesToUpdate[ei.Path()] = f
+	} else {
+		f.Action = "remove"
+		FilesToUpdate[ei.Path()] = f
 	}
 }

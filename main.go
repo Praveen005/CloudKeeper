@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -24,28 +25,38 @@ type MetaConfig struct {
 }
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatalf("[ERROR] %v", err)
-	}
-	watch()
+	// if err := run(); err != nil {
+	// 	log.Fatalf("[ERROR] %v", err)
+	// }
+
+	run()
+
+	select{}
 }
 
-func run() error {
+func run() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("[WARN] Error loading .env file:", err)
+		return
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := parseConfig()
 	if err != nil {
-		return fmt.Errorf("parsing config: %w", err)
+		log.Printf("parsing config: %v", err)
+		return
 	}
 
 	log.Printf("[INFO] Starting backup process for directory: %s", cfg.backupDir)
-	if err := BackItUp(cfg.backupDir, int(cfg.backupInterval.Minutes()), cfg.s3Bucket, cfg.s3Prefix); err != nil {
-		return fmt.Errorf("backup failed: %w", err)
-	}
+	// if err := BackItUp(cfg.backupDir, int(cfg.backupInterval.Minutes()), cfg.s3Bucket, cfg.s3Prefix); err != nil {
+	// 	return fmt.Errorf("backup failed: %w", err)
+	// }
 
-	return nil
+	go watch(ctx)
+	go flushToDB(ctx)
+	
 }
 
 func parseConfig() (MetaConfig, error) {

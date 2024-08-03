@@ -8,7 +8,9 @@ require (
 	github.com/joho/godotenv v1.5.1
 )
 
-require golang.org/x/sys v0.0.0-20180926160741-c2ed4eda69e7
+require golang.org/x/sys v0.4.0
+
+require go.etcd.io/bbolt v1.3.10 // indirect
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.3 // indirect
