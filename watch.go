@@ -18,13 +18,9 @@ type FileChangeEvent struct {
 	Action string
 }
 
-// var FilesToAdd map[string]FileChangeEvent
-// var FilesToRemove map[string]FileChangeEvent
 var FilesToUpdate map[string]FileChangeEvent
 
 func init() {
-	// FilesToAdd = make(map[string]FileChangeEvent)
-	// FilesToRemove = make(map[string]FileChangeEvent)
 	FilesToUpdate = make(map[string]FileChangeEvent)
 }
 
@@ -129,24 +125,4 @@ func addEvent(ei notify.EventInfo, action string) {
 	}
 
 	FilesToUpdate[ei.Path()] = f
-
-	// if action == "add"{
-	// 	FilesToAdd[ei.Path()] = f
-	// 	return
-	// }
-	// FilesToRemove[ei.Path()] = f
 }
-
-/*
-
-
-Edge cases:
-
-1. Files is present in s3, you deleted it(in local), but then added back the file with the same name at the same location, but with different content inside:
-	How will this be processed?
-	1. Remove the existing file
-	2. Add the file again(content is diff.)
-	caveat: If the content is same, we are making extra deletion & Addition, that's a trade-off we're making
-
-
-*/

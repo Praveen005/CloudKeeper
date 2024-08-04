@@ -22,7 +22,7 @@ func backup(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			log.Println("[INFO] starting files updation in S3")
-			
+
 			if err := flushToS3(); err != nil {
 				log.Fatalf("backup failed: %v", err)
 			}
@@ -111,13 +111,12 @@ func deleteFromS3(fileToDelete string) error {
 	client := s3.NewFromConfig(cfg)
 
 	relativePath, err := filepath.Rel(MetaCfg.backupDir, fileToDelete)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	s3Key := filepath.Join(MetaCfg.s3Prefix, relativePath)
 	// s3Key := filepath.Join(MetaCfg.s3Prefix , fileToDelete)
-    s3Key = strings.ReplaceAll(s3Key, "\\", "/") // Ensure forward slashes for S3 keys
-
+	s3Key = strings.ReplaceAll(s3Key, "\\", "/") // Ensure forward slashes for S3 keys
 
 	err = deleteS3Directory(context.TODO(), client, s3Key)
 
