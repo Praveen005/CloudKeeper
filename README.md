@@ -46,13 +46,16 @@ AWS_REGION=us-east-1
 
 
 ## Todo
+
  1. Write unit tests.
  2. DB transactions are not being hendled well.
  3. Better error-handling, will introduce a custom logger, I have made it a mess, looking where has the error actually occured is a nightmare rightnow.
  4. Dameonize it to run in background.
  5. Change the project structure from current flat one.
 
-Result: It is working as intended:
+## Result
+
+It is working as intended:
 - Success message from terminal:
   
 <img width="316" alt="image" src="https://github.com/user-attachments/assets/3ec58364-b656-400d-a842-e24507c7b01c">
