@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultBackupInterval = 15 * time.Minute
+	defaultBackupInterval = 65 * time.Second
 )
 
 // MetaConfig contains the meta data needed to backup your files to s3
@@ -24,17 +24,14 @@ type MetaConfig struct {
 	backupInterval time.Duration
 }
 
+var MetaCfg MetaConfig
+
 func main() {
-	// if err := run(); err != nil {
-	// 	log.Fatalf("[ERROR] %v", err)
-	// }
-
 	run()
-
-	select{}
 }
 
 func run() {
+	var err error
 	if err := godotenv.Load(); err != nil {
 		log.Println("[WARN] Error loading .env file:", err)
 		return
@@ -43,24 +40,21 @@ func run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := parseConfig()
+	MetaCfg, err = parseConfig()
 	if err != nil {
 		log.Printf("parsing config: %v", err)
 		return
 	}
 
-	log.Printf("[INFO] Starting backup process for directory: %s", cfg.backupDir)
-	// if err := BackItUp(cfg.backupDir, int(cfg.backupInterval.Minutes()), cfg.s3Bucket, cfg.s3Prefix); err != nil {
-	// 	return fmt.Errorf("backup failed: %w", err)
-	// }
-
 	go watch(ctx)
 	go flushToDB(ctx)
-	
+	go backup(ctx)
+
+	select {}
 }
 
 func parseConfig() (MetaConfig, error) {
-	var cfg MetaConfig
+
 	var localDir, bucket, prefix string
 
 	// Define flags for some meta informations you want to get though command line
@@ -71,38 +65,38 @@ func parseConfig() (MetaConfig, error) {
 
 	// Get the directory which you want to backup.
 	// read from env. variable or the flag variable if specified.
-	cfg.backupDir = getConfigValue(localDir, "BACKUP_DIR")
-	if cfg.backupDir == "" {
-		return cfg, fmt.Errorf("no backup directory specified")
+	MetaCfg.backupDir = getConfigValue(localDir, "BACKUP_DIR")
+	if MetaCfg.backupDir == "" {
+		return MetaCfg, fmt.Errorf("no backup directory specified")
 	}
 
 	// Get the name of s3 bucket into which you want to backup.
 	// read from env. variable or the flag variable if specified.
-	cfg.s3Bucket = getConfigValue(bucket, "S3_BUCKET")
-	if cfg.s3Bucket == "" {
-		return cfg, fmt.Errorf("no s3 bucket specified")
+	MetaCfg.s3Bucket = getConfigValue(bucket, "S3_BUCKET")
+	if MetaCfg.s3Bucket == "" {
+		return MetaCfg, fmt.Errorf("no s3 bucket specified")
 	}
 
 	// Get the filepath(or say prefix) from your s3 bucket which will be prefixed to your directory name.
 	// read from env. variable or the flag variable if specified.
-	cfg.s3Prefix = getConfigValue(prefix, "S3_BUCKET_PREFIX")
-	if cfg.s3Prefix == "" {
-		return cfg, fmt.Errorf("no s3 bucket prefix specified")
+	MetaCfg.s3Prefix = getConfigValue(prefix, "S3_BUCKET_PREFIX")
+	if MetaCfg.s3Prefix == "" {
+		return MetaCfg, fmt.Errorf("no s3 bucket prefix specified")
 	}
 
 	// We will be using this in a while, when we run this binary in background
 	backupIntervalStr := os.Getenv("BACKUP_INTERVAL")
 	if backupIntervalStr == "" {
-		cfg.backupInterval = defaultBackupInterval
+		MetaCfg.backupInterval = defaultBackupInterval
 	} else {
 		backupIntervalInt, err := strconv.Atoi(backupIntervalStr)
 		if err != nil {
-			return cfg, fmt.Errorf("invalid BACKUP_INTERVAL: %w", err)
+			return MetaCfg, fmt.Errorf("invalid BACKUP_INTERVAL: %w", err)
 		}
-		cfg.backupInterval = time.Duration(backupIntervalInt) * time.Minute
+		MetaCfg.backupInterval = time.Duration(backupIntervalInt) * time.Minute
 	}
 
-	return cfg, nil
+	return MetaCfg, nil
 }
 
 // Gets you the metadata to populate MetaConfig

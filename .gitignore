@@ -26,3 +26,6 @@ go.work.sum
 
 # Ignore specific build output file
 upload
+
+# Ignore the Database data
+*.db
