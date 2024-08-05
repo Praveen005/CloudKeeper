@@ -14,10 +14,10 @@ import (
 
 // Backup function periodically calls the flushToS3 function to flush the data(files) to s3
 func Backup(ctx context.Context) {
-	ticker := time.NewTicker(fsconfig.MetaCfg.BackupInterval)
+	ticker := time.NewTicker(fsconfig.MetaCfg.S3BackupInterval)
 	// fmt.Println("Inside backup function, backup interval: ", fsconfig.MetaCfg.BackupInterval)
 	customlog.Logger.Info("Inside backup function",
-		zap.String("backup_interval", fsconfig.MetaCfg.BackupInterval.String()))
+		zap.String("backup_interval", fsconfig.MetaCfg.S3BackupInterval.String()))
 
 	defer ticker.Stop()
 	for {

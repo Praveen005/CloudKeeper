@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/Praveen005/CloudKeeper/internal/utils"
 	bolt "go.etcd.io/bbolt"
 )
@@ -24,7 +25,7 @@ func init() {
 
 // FlushToDB function runs a ticker to periodically call PersistData function and flush the metadata stored in-memory to the database for persistence (till the files get pushed to s3).
 func FlushToDB(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(fsconfig.MetaCfg.DBPersistenceInterval)
 	defer ticker.Stop()
 	for {
 		select {

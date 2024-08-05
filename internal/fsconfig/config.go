@@ -9,15 +9,17 @@ import (
 )
 
 const (
-	defaultBackupInterval = 65 * time.Second
+	defaultS3BackupInterval      = 24 * time.Hour
+	defaultDBPersistenceInterval = 10 * time.Minute
 )
 
 // MetaConfig holds the configuration settings needed to back up files to S3.
 type MetaConfig struct {
-	BackupDir      string
-	S3Bucket       string
-	S3Prefix       string
-	BackupInterval time.Duration
+	BackupDir             string
+	S3Bucket              string
+	S3Prefix              string
+	S3BackupInterval      time.Duration
+	DBPersistenceInterval time.Duration
 }
 
 // MetaCfg is a MetaConfig instance
@@ -55,16 +57,28 @@ func ParseConfig() (MetaConfig, error) {
 		return MetaCfg, fmt.Errorf("no s3 bucket prefix specified")
 	}
 
-	// We will be using this in a while, when we run this binary in background
-	BackupIntervalStr := os.Getenv("BACKUP_INTERVAL")
-	if BackupIntervalStr == "" {
-		MetaCfg.BackupInterval = defaultBackupInterval
+	// After every `S3BackupInterval`, files will be updated to s3
+	S3BackupIntervalStr := os.Getenv("S3_BACKUP_INTERVAL")
+	if S3BackupIntervalStr == "" {
+		MetaCfg.S3BackupInterval = defaultS3BackupInterval
 	} else {
-		BackupIntervalInt, err := strconv.Atoi(BackupIntervalStr)
+		S3BackupIntervalInt, err := strconv.Atoi(S3BackupIntervalStr)
 		if err != nil {
 			return MetaCfg, fmt.Errorf("invalid BACKUP_INTERVAL: %w", err)
 		}
-		MetaCfg.BackupInterval = time.Duration(BackupIntervalInt) * time.Minute
+		MetaCfg.S3BackupInterval = time.Duration(S3BackupIntervalInt) * time.Minute
+	}
+
+	// After every `DBPersistenceInterval`, files will be updated to s3
+	DBPersistenceIntervalStr := os.Getenv("S3_BACKUP_INTERVAL")
+	if DBPersistenceIntervalStr == "" {
+		MetaCfg.DBPersistenceInterval = defaultDBPersistenceInterval
+	} else {
+		DBPersistenceIntervalInt, err := strconv.Atoi(DBPersistenceIntervalStr)
+		if err != nil {
+			return MetaCfg, fmt.Errorf("invalid BACKUP_INTERVAL: %w", err)
+		}
+		MetaCfg.DBPersistenceInterval = time.Duration(DBPersistenceIntervalInt) * time.Minute
 	}
 
 	return MetaCfg, nil

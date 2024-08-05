@@ -69,6 +69,7 @@ Writing to `/dev/null` effectively throws away all the outputs from this program
  2. DB transactions are not being hendled well.
  3. Better error-handling, will introduce a custom logger, I have made it a mess, looking where has the error actually occured is a nightmare rightnow.
  4. Imlement this project using checksum approach, instead of capturing every Fs event and benchmark them both.
+ 5. Work on notification part.
 
 ## Result
 
