@@ -25,7 +25,8 @@ Run it as a background process to backup your files to s3
 ## How to use?
 
 1. Clone the repo
-2. Set the following environment variables in .env file(replace with your values, these are dummy ones for ref. :p) or use command like, `export BACKUP_INTERVAL=24`
+2. To install Dependencies use `go run` (or `go test` or `go build` for that matter) any external dependencies will automatically (and recursively) be [downloaded](https://www.alexedwards.net/blog/an-overview-of-go-tooling#build-and-deployment:~:text=when%20you%20use,the%20latest%20commit.)
+3. Set the following environment variables in .env file(replace with your values, these are dummy ones for ref. :p) or use command like, `export BACKUP_INTERVAL=24`
    
 ```
 BACKUP_DIR=/home/praveen/notifyTest
@@ -40,6 +41,23 @@ AWS_REGION=us-east-1
 3. Build it: `go build -o anyName ./cmd/cloudkeeper`
 4. Run: `./anyName`
 5. Now go make changes and see for yourself.
+6. you want a script to run as a daemon, in the background and never end‐
+ing.
+
+```
+nohup ./upload >>/Home/tmp/log/cloudkeeper.log 2>&1 <&- &
+```
+
+> Note: Make sure you have your `/Home/tmp/log/cloudkeeper.log` created with necessary permisions. Here, `upload` is your binary executable obtained by running `go build` command, you can have any name.
+
+7. Don't wan't to store the logs? Use
+
+```
+nohup ./upload 0<&-1>/dev/null 2>&1 &
+```
+
+Writing to `/dev/null` effectively throws away all the outputs from this program.
+
    
 > If faced with any issue, raise an issue here(I promise, I will reply within seconds :xd.. Yes, I am the Flash🫣)
 
@@ -50,8 +68,7 @@ AWS_REGION=us-east-1
  1. Write unit tests.
  2. DB transactions are not being hendled well.
  3. Better error-handling, will introduce a custom logger, I have made it a mess, looking where has the error actually occured is a nightmare rightnow.
- 4. Dameonize it to run in background.
- 5. Imlement this project using checksum approach, instead of capturing every Fs event and benchmark them both.
+ 4. Imlement this project using checksum approach, instead of capturing every Fs event and benchmark them both.
 
 ## Result
 
