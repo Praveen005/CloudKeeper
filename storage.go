@@ -8,13 +8,14 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+// flushToDB function runs a ticker to periodically call persistData function and flush the metadata stored in-memory to the database for persistence (till the files get pushed to s3).
 func flushToDB(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			if len(FilesToUpdate) == 0 {
+			if len(FilesToUpdate) == 0 { // If there is no metadata stored in-memory, just continue
 				continue
 			}
 			log.Println("[Info] Pushing data to DB")
@@ -25,14 +26,16 @@ func flushToDB(ctx context.Context) {
 			}
 			log.Println("[Info] Data pushed successfully, printing now...")
 			printData()
-			FilesToUpdate = make(map[string]FileChangeEvent)
+			FilesToUpdate = make(map[string]FileChangeEvent) // Clear the map, since data has been persisted
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
+// persistData function stores the metadata to database
 func persistData() error {
+	// creates and opens a database at the given path. If the file does not exist then it will be created automatically.
 	db, err := bolt.Open("filesToS3.db", 0666, &bolt.Options{Timeout: 2 * time.Minute})
 	if err != nil {
 		return err
@@ -40,7 +43,7 @@ func persistData() error {
 	defer db.Close()
 
 	err = db.Batch(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte("filesToUpdate"))
+		b, err := tx.CreateBucketIfNotExists([]byte("filesToUpdate")) // We don't ave tables here, we have buckets
 		if err != nil {
 			return err
 		}
@@ -94,6 +97,7 @@ func printData() {
 	}
 }
 
+// flushToS3 function calls the deleteFromS3 or uploadToS3 function as per value of the action field specified for a file path in the metadata
 func flushToS3() error {
 	db, err := bolt.Open("filesToS3.db", 0666, &bolt.Options{Timeout: 2 * time.Minute})
 	if err != nil {

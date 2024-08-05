@@ -65,3 +65,5 @@ It is working as intended:
 
 <img width="657" alt="image" src="https://github.com/user-attachments/assets/13641e1d-f80f-40f8-ac3e-db50e89cea2e">
 
+
+> Note: Here, I have used [`notify`](github.com/rjeczalik/notify) package, and not [fsnotify](https://github.com/fsnotify/fsnotify), because the later does not support recursive watching.

@@ -11,24 +11,28 @@ import (
 )
 
 const (
-	changeChannelBufferSize = 1000
+	eventChannelBufferSize = 1000
 )
 
+// FileChangeEvent stores the action(add/remove) to be performed a given file path
 type FileChangeEvent struct {
 	Action string
 }
 
+// FilesToUpdate function stores the metadata(filepath and action to be performed on it) in-memory to be flushed later to DB
 var FilesToUpdate map[string]FileChangeEvent
 
+// Initializes the map at the start of the program
 func init() {
 	FilesToUpdate = make(map[string]FileChangeEvent)
 }
 
+// watch function keeps an eye over the directory you want to backup for any modfication.
 func watch(ctx context.Context) {
-	c := make(chan notify.EventInfo, changeChannelBufferSize)
+	c := make(chan notify.EventInfo, eventChannelBufferSize)
 
-	regularEvents := make(chan notify.EventInfo, 1)
-	renameEvents := make(chan notify.EventInfo, 2)
+	regularEvents := make(chan notify.EventInfo, 1) // stores events like, creation/motification/removal
+	renameEvents := make(chan notify.EventInfo, 2)  // stores Rename events(In rename previous file is deleted, and a new one is created with the same name. It also caters for file/folder movement, like: moved from & moved to)
 	dirToWatch := MetaCfg.backupDir
 
 	// we have to set a recursive watch, hence adding a /...
@@ -37,6 +41,7 @@ func watch(ctx context.Context) {
 	} else {
 		dirToWatch += "/..."
 	}
+	// As and when any event occurs, it is stored in channel 'c'. It is of the type notify.EventInfo
 	if err := notify.Watch(dirToWatch, c, notify.InCreate, notify.Remove, notify.Write, notify.InMovedFrom, notify.InMovedTo); err != nil {
 		log.Fatal(err)
 	}
@@ -49,6 +54,7 @@ func watch(ctx context.Context) {
 	select {}
 }
 
+// directEvents funcion consumes events from channel 'c' and directs them to appropriate channels
 func directEvents(ctx context.Context, c, regularEvents, renameEvents chan notify.EventInfo) {
 	for {
 		select {
@@ -66,6 +72,7 @@ func directEvents(ctx context.Context, c, regularEvents, renameEvents chan notif
 	}
 }
 
+// handleRegularEvents takes in events like creation/motification/removal
 func handleRegularEvents(ctx context.Context, regularEvents chan notify.EventInfo) {
 	for {
 		select {
@@ -87,6 +94,7 @@ func handleRegularEvents(ctx context.Context, regularEvents chan notify.EventInf
 	}
 }
 
+// handleRenameEvents function takes in events like, Rename, and file/folder movement from one to another
 func handleRenameEvents(ctx context.Context, renameEvents chan notify.EventInfo) {
 	moves := make(map[uint32]struct {
 		From string
@@ -119,6 +127,7 @@ func handleRenameEvents(ctx context.Context, renameEvents chan notify.EventInfo)
 	}
 }
 
+// addEvent function stores the file change metadata in-memory
 func addEvent(ei notify.EventInfo, action string) {
 	f := FileChangeEvent{
 		Action: action,
@@ -126,3 +135,5 @@ func addEvent(ei notify.EventInfo, action string) {
 
 	FilesToUpdate[ei.Path()] = f
 }
+
+// Observation: directEvents, handleRegularEvents & handleRenameEvents functions can very well be clubbed together :)

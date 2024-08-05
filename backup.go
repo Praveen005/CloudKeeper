@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// backup function periodically calls the flushToS3 function to flush the data(files) to s3
 func backup(ctx context.Context) {
 	ticker := time.NewTicker(MetaCfg.backupInterval)
 	fmt.Println("Inside backup function, backup interval: ", MetaCfg.backupInterval)
@@ -33,7 +34,7 @@ func backup(ctx context.Context) {
 	}
 }
 
-// BackItUp walks through the local directory you specified, and backs it up to S3
+// uploadToS3 walks through the local directory you specified, and backs it up to S3
 func uploadToS3(localDir string, bucket, prefix string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -110,12 +111,22 @@ func deleteFromS3(fileToDelete string) error {
 	// create s3 client
 	client := s3.NewFromConfig(cfg)
 
+	/* Let's understand what's happening here:
+
+	MetaCfg.backupDir is the directory that you want to backup, say it looks like: '/home/praveen/fsnotifyTest'
+	And from the file change event, you get the following file path which has the file you want to push to s3:
+		'/home/praveen/fsnotifyTest/sample21/folder1/files34.txt'
+
+	And in your s3 bucket you want to store it in say 's3folder', so say your s3 prefix is 's3folder/'
+	So, you would want to store like: 's3folder/sample21/folder1/files34.txt'
+
+	for that, you need to trim, '/home/praveen/fsnotifyTest' from '/home/praveen/fsnotifyTest/sample21/folder1/files34.txt'. And this is what 'filepath.Rel()' does.
+	*/
 	relativePath, err := filepath.Rel(MetaCfg.backupDir, fileToDelete)
 	if err != nil {
 		return err
 	}
 	s3Key := filepath.Join(MetaCfg.s3Prefix, relativePath)
-	// s3Key := filepath.Join(MetaCfg.s3Prefix , fileToDelete)
 	s3Key = strings.ReplaceAll(s3Key, "\\", "/") // Ensure forward slashes for S3 keys
 
 	err = deleteS3Directory(context.TODO(), client, s3Key)
@@ -129,33 +140,38 @@ func deleteFromS3(fileToDelete string) error {
 }
 
 func deleteS3Directory(ctx context.Context, client S3Client, key string) error {
+	// specify the parameters for listing objects in the S3 bucket and filtering the results to only include objects whose keys start with a certain prefix.
 	listInput := &s3.ListObjectsV2Input{
 		Bucket: aws.String(MetaCfg.s3Bucket),
 		Prefix: aws.String(key),
 	}
 
+	// Run it till there is no more object to fetch from the bucket
 	for {
-		output, err := client.ListObjectsV2(ctx, listInput)
+		output, err := client.ListObjectsV2(ctx, listInput) // gets tou the objects from the bucket specified
 		if err != nil {
 			return err
 		}
 
+		// Deletes files sequentially by calling DeleteS3Object function
 		for _, object := range output.Contents {
 			if err := DeleteS3Object(ctx, client, *object.Key); err != nil {
 				return err
 			}
 		}
 
+		// Check if all of the results were returned
 		if !*output.IsTruncated {
 			break
 		}
 
+		// ContinuationToken is used for pagination of the list response, in one go all the objects are not listed, hence the infinite for loop :)
 		listInput.ContinuationToken = output.ContinuationToken
 	}
 	return nil
 }
 
-// Delete a single object from s3
+// DeleteS3Object function deletes a single object from s3
 func DeleteS3Object(ctx context.Context, client S3Client, key string) error {
 	_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(MetaCfg.s3Bucket),

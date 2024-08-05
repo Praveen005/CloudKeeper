@@ -16,20 +16,21 @@ const (
 	defaultBackupInterval = 65 * time.Second
 )
 
-// MetaConfig contains the meta data needed to backup your files to s3
-type MetaConfig struct {
+type metaConfig struct {
 	backupDir      string
 	s3Bucket       string
 	s3Prefix       string
 	backupInterval time.Duration
 }
 
-var MetaCfg MetaConfig
+// MetaCfg holds the configuration settings needed to back up files to S3.
+var MetaCfg metaConfig
 
 func main() {
 	run()
 }
 
+// run calls all the neccessary functions
 func run() {
 	var err error
 	if err := godotenv.Load(); err != nil {
@@ -53,7 +54,8 @@ func run() {
 	select {}
 }
 
-func parseConfig() (MetaConfig, error) {
+// parseConfig retrieves the required data and stores in MetaCfg
+func parseConfig() (metaConfig, error) {
 
 	var localDir, bucket, prefix string
 
@@ -99,7 +101,7 @@ func parseConfig() (MetaConfig, error) {
 	return MetaCfg, nil
 }
 
-// Gets you the metadata to populate MetaConfig
+// Gets you the metadata to populate metaConfig
 func getConfigValue(flagValue, envVar string) string {
 	if flagValue != "" {
 		return flagValue
