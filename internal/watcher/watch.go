@@ -9,7 +9,7 @@ import (
 
 	"github.com/rjeczalik/notify"
 
-	"github.com/Praveen005/CloudKeeper/fsconfig"
+	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/Praveen005/CloudKeeper/internal/db"
 )
 

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Praveen005/CloudKeeper/fsconfig"
+	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/Praveen005/CloudKeeper/internal/s3client"
 	bolt "go.etcd.io/bbolt"
 )

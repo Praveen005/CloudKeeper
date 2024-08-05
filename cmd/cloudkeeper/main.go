@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/Praveen005/CloudKeeper/fsconfig"
+	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/Praveen005/CloudKeeper/internal/backup"
 	"github.com/Praveen005/CloudKeeper/internal/db"
 	"github.com/Praveen005/CloudKeeper/internal/watcher"

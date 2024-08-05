@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Praveen005/CloudKeeper/utils"
+	"github.com/Praveen005/CloudKeeper/internal/utils"
 	bolt "go.etcd.io/bbolt"
 )
 
