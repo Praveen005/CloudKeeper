@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/Praveen005/CloudKeeper/internal/customlog"
 )
 
 const (
@@ -64,21 +67,23 @@ func ParseConfig() (MetaConfig, error) {
 	} else {
 		S3BackupIntervalInt, err := strconv.Atoi(S3BackupIntervalStr)
 		if err != nil {
-			return MetaCfg, fmt.Errorf("invalid BACKUP_INTERVAL: %w", err)
+			return MetaCfg, fmt.Errorf("invalid S3_BACKUP_INTERVAL: %w", err)
 		}
-		MetaCfg.S3BackupInterval = time.Duration(S3BackupIntervalInt) * time.Minute
+		timeUnit := getTimeUnit(os.Getenv("S3_BACKUP_INTERVAL_UNIT"))
+		MetaCfg.S3BackupInterval = time.Duration(S3BackupIntervalInt) * timeUnit
 	}
 
-	// After every `DBPersistenceInterval`, files will be updated to s3
-	DBPersistenceIntervalStr := os.Getenv("S3_BACKUP_INTERVAL")
+	// After every `DBPersistenceInterval`, files will be persisted to DB
+	DBPersistenceIntervalStr := os.Getenv("DB_PERSISTENCE_INTERVAL")
 	if DBPersistenceIntervalStr == "" {
 		MetaCfg.DBPersistenceInterval = defaultDBPersistenceInterval
 	} else {
 		DBPersistenceIntervalInt, err := strconv.Atoi(DBPersistenceIntervalStr)
 		if err != nil {
-			return MetaCfg, fmt.Errorf("invalid BACKUP_INTERVAL: %w", err)
+			return MetaCfg, fmt.Errorf("invalid DB_PERSISTENCE_INTERVAL: %w", err)
 		}
-		MetaCfg.DBPersistenceInterval = time.Duration(DBPersistenceIntervalInt) * time.Minute
+		timeUnit := getTimeUnit(os.Getenv("DB_PERSISTENCE_INTERVAL_UNIT"))
+		MetaCfg.DBPersistenceInterval = time.Duration(DBPersistenceIntervalInt) * timeUnit
 	}
 
 	return MetaCfg, nil
@@ -90,4 +95,25 @@ func getConfigValue(flagValue, envVar string) string {
 		return flagValue
 	}
 	return os.Getenv(envVar)
+}
+
+func getTimeUnit(unit string) time.Duration{
+	// Default time unit is 'hour'
+	var timeUnit time.Duration = time.Hour
+
+	// Convert input to lowercase for case-insensitive comparison
+	unit = strings.ToLower(unit)
+
+	switch unit{
+	case "second", "seconds":
+		timeUnit = time.Second
+	case "minute", "minutes":
+		timeUnit = time.Minute
+	case "hour", "hours":
+		timeUnit = time.Hour
+	default:
+		customlog.Logger.Warn("Invalid or no time unit specified, defaulting to hour.")
+	}
+
+	return timeUnit
 }

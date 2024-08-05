@@ -30,7 +30,10 @@ Run it as a background process to backup your files to s3
    
 ```
 BACKUP_DIR=/home/praveen/notifyTest
-BACKUP_INTERVAL=24
+S3_BACKUP_INTERVAL=24
+S3_BACKUP_INTERVAL_UNIT=hours           # one of hour(s)/minute(S)/second(s)
+DB_PERSISTENCE_INTERVAL=10
+DB_PERSISTENCE_INTERVAL_UNIT=minute      # one of hour(s)/minute(S)/second(s)
 S3_BUCKET=backupbucket-praveen
 S3_BUCKET_PREFIX=experimenting/
 AWS_ACCESS_KEY=AKGHYUU67PraveenIsGood36tYUI
