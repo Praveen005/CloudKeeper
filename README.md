@@ -37,7 +37,7 @@ AWS_SECRET_ACCESS_KEY=Htyf5JED/E9EPraveenIsGoodwPRLhtyMh6jgdsFT
 AWS_REGION=us-east-1
 ```
 
-3. Build it: `go build -o anyName`
+3. Build it: `go build -o anyName ./cmd/cloudkeeper`
 4. Run: `./anyName`
 5. Now go make changes and see for yourself.
    
