@@ -2,24 +2,30 @@ package backup
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
+	"github.com/Praveen005/CloudKeeper/internal/customlog"
 	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/Praveen005/CloudKeeper/internal/s3client"
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 )
 
 // Backup function periodically calls the flushToS3 function to flush the data(files) to s3
 func Backup(ctx context.Context) {
 	ticker := time.NewTicker(fsconfig.MetaCfg.BackupInterval)
-	fmt.Println("Inside backup function, backup interval: ", fsconfig.MetaCfg.BackupInterval)
+	// fmt.Println("Inside backup function, backup interval: ", fsconfig.MetaCfg.BackupInterval)
+	customlog.Logger.Info("Inside backup function",
+		zap.String("backup_interval", fsconfig.MetaCfg.BackupInterval.String()),
+	)
+
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			log.Println("[INFO] starting files updation in S3")
+			// log.Println("[INFO] starting files updation in S3")
+			customlog.Logger.Debug("starting files updation in S3")
 
 			if err := FlushToS3(); err != nil {
 				log.Fatalf("backup failed: %v", err)

@@ -12,6 +12,8 @@ require golang.org/x/sys v0.4.0
 
 require go.etcd.io/bbolt v1.3.10
 
+require go.uber.org/multierr v1.10.0 // indirect
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.3
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.3 // indirect
@@ -30,4 +32,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.3 // indirect
 	github.com/aws/smithy-go v1.20.3 // indirect
 	github.com/rjeczalik/notify v0.9.3
+	go.uber.org/zap v1.27.0
 )

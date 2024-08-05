@@ -9,8 +9,8 @@ import (
 
 	"github.com/rjeczalik/notify"
 
-	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/Praveen005/CloudKeeper/internal/db"
+	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 )
 
 const (
