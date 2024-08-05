@@ -16,10 +16,8 @@ import (
 func Backup(ctx context.Context) {
 	ticker := time.NewTicker(fsconfig.MetaCfg.BackupInterval)
 	// fmt.Println("Inside backup function, backup interval: ", fsconfig.MetaCfg.BackupInterval)
-	// customlog.Logger.Info("Inside backup function",
-	// zap.String("backup_interval", fsconfig.MetaCfg.BackupInterval.String()))
 	customlog.Logger.Info("Inside backup function",
-		zap.Stringer("backup_interval", fsconfig.MetaCfg.BackupInterval))
+		zap.String("backup_interval", fsconfig.MetaCfg.BackupInterval.String()))
 
 	defer ticker.Stop()
 	for {

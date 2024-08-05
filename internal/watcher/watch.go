@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"golang.org/x/sys/unix"
 
@@ -37,11 +38,29 @@ func Watch(ctx context.Context) {
 	}
 	defer notify.Stop(c)
 
-	go DirectEvents(ctx, c, regularEvents, renameEvents)
-	go HandleRegularEvents(ctx, regularEvents)
-	go HandleRenameEvents(ctx, renameEvents)
+	// go DirectEvents(ctx, c, regularEvents, renameEvents)
+	// go HandleRegularEvents(ctx, regularEvents)
+	// go HandleRenameEvents(ctx, renameEvents)
 
-	select {}
+	// select {}
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		DirectEvents(ctx, c, regularEvents, renameEvents)
+	}()
+
+	go func() {
+		defer wg.Done()
+		HandleRegularEvents(ctx, regularEvents)
+	}()
+
+	go func() {
+		defer wg.Done()
+		go HandleRenameEvents(ctx, renameEvents)
+	}()
+	wg.Wait()
 }
 
 // DirectEvents funcion consumes events from channel 'c' and directs them to appropriate channels

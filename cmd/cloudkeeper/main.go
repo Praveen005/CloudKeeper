@@ -74,6 +74,8 @@ func main() {
 		customlog.Logger.Info("All goroutines have completed. Shutting down.")
 	case <-time.After(30 * time.Second):
 		customlog.Logger.Warn("Timeout waiting for goroutines to finish. Forcing shutdown.")
+
+	// If you don't want to wait for timeout to expire or goroutines to finish, send another signal by ctrl+c
 	case <-sigChan:
 		customlog.Logger.Warn("Received second interrupt signal. Forcing immediate shutdown.")
 		os.Exit(0)
