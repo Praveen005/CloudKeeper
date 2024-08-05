@@ -51,8 +51,7 @@ AWS_REGION=us-east-1
  2. DB transactions are not being hendled well.
  3. Better error-handling, will introduce a custom logger, I have made it a mess, looking where has the error actually occured is a nightmare rightnow.
  4. Dameonize it to run in background.
- 5. Change the project structure from current flat one.
- 6. Imlement this project using checksum approach, instead of capturing every Fs event and benchmark them both.
+ 5. Imlement this project using checksum approach, instead of capturing every Fs event and benchmark them both.
 
 ## Result
 

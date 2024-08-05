@@ -1,4 +1,4 @@
-package main
+package s3client
 
 import (
 	"context"
@@ -7,35 +7,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
+	"github.com/Praveen005/CloudKeeper/fsconfig"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// backup function periodically calls the flushToS3 function to flush the data(files) to s3
-func backup(ctx context.Context) {
-	ticker := time.NewTicker(MetaCfg.backupInterval)
-	fmt.Println("Inside backup function, backup interval: ", MetaCfg.backupInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			log.Println("[INFO] starting files updation in S3")
-
-			if err := flushToS3(); err != nil {
-				log.Fatalf("backup failed: %v", err)
-			}
-			log.Printf("[Info] Success! files updated in s3.")
-		case <-ctx.Done():
-			return
-		}
-	}
+// S3Client is an interface for the S3 client, to make it testable(creating mocks)
+type S3Client interface {
+	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
+	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 }
 
-// uploadToS3 walks through the local directory you specified, and backs it up to S3
-func uploadToS3(localDir string, bucket, prefix string) error {
+// UploadToS3 walks through the local directory you specified, and backs it up to S3
+func UploadToS3(localDir string, bucket, prefix string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		log.Fatalf("[ERROR] failed to load configuration: %v", err)
@@ -63,7 +49,7 @@ func uploadToS3(localDir string, bucket, prefix string) error {
 
 		// Calculate the s3 key
 		// relativePath, err := filepath.Rel(localDir, path)
-		relativePath, err := filepath.Rel(MetaCfg.backupDir, path)
+		relativePath, err := filepath.Rel(fsconfig.MetaCfg.BackupDir, path)
 		if err != nil {
 			return fmt.Errorf("[ERROR] failed to get relative path : %v", err)
 		}
@@ -96,13 +82,8 @@ func uploadToS3(localDir string, bucket, prefix string) error {
 	return nil
 }
 
-// S3Client is an interface for the S3 client, to make it testable(creating mocks)
-type S3Client interface {
-	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
-	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
-}
-
-func deleteFromS3(fileToDelete string) error {
+// DeleteFromS3 function deletes objects from s3 bucket
+func DeleteFromS3(fileToDelete string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return err
@@ -113,7 +94,7 @@ func deleteFromS3(fileToDelete string) error {
 
 	/* Let's understand what's happening here:
 
-	MetaCfg.backupDir is the directory that you want to backup, say it looks like: '/home/praveen/fsnotifyTest'
+	fsconfig.MetaCfg.BackupDir is the directory that you want to backup, say it looks like: '/home/praveen/fsnotifyTest'
 	And from the file change event, you get the following file path which has the file you want to push to s3:
 		'/home/praveen/fsnotifyTest/sample21/folder1/files34.txt'
 
@@ -122,14 +103,14 @@ func deleteFromS3(fileToDelete string) error {
 
 	for that, you need to trim, '/home/praveen/fsnotifyTest' from '/home/praveen/fsnotifyTest/sample21/folder1/files34.txt'. And this is what 'filepath.Rel()' does.
 	*/
-	relativePath, err := filepath.Rel(MetaCfg.backupDir, fileToDelete)
+	relativePath, err := filepath.Rel(fsconfig.MetaCfg.BackupDir, fileToDelete)
 	if err != nil {
 		return err
 	}
-	s3Key := filepath.Join(MetaCfg.s3Prefix, relativePath)
+	s3Key := filepath.Join(fsconfig.MetaCfg.S3Prefix, relativePath)
 	s3Key = strings.ReplaceAll(s3Key, "\\", "/") // Ensure forward slashes for S3 keys
 
-	err = deleteS3Directory(context.TODO(), client, s3Key)
+	err = DeleteS3Directory(context.TODO(), client, s3Key)
 
 	if err != nil {
 		return err
@@ -139,10 +120,11 @@ func deleteFromS3(fileToDelete string) error {
 	return nil
 }
 
-func deleteS3Directory(ctx context.Context, client S3Client, key string) error {
+// DeleteS3Directory function, traverses through all the files in a directory marked to be deleted and deletes them
+func DeleteS3Directory(ctx context.Context, client S3Client, key string) error {
 	// specify the parameters for listing objects in the S3 bucket and filtering the results to only include objects whose keys start with a certain prefix.
 	listInput := &s3.ListObjectsV2Input{
-		Bucket: aws.String(MetaCfg.s3Bucket),
+		Bucket: aws.String(fsconfig.MetaCfg.S3Bucket),
 		Prefix: aws.String(key),
 	}
 
@@ -174,7 +156,7 @@ func deleteS3Directory(ctx context.Context, client S3Client, key string) error {
 // DeleteS3Object function deletes a single object from s3
 func DeleteS3Object(ctx context.Context, client S3Client, key string) error {
 	_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(MetaCfg.s3Bucket),
+		Bucket: aws.String(fsconfig.MetaCfg.S3Bucket),
 		Key:    aws.String(key),
 	})
 	return err
