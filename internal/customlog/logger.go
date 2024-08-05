@@ -11,12 +11,11 @@ import (
 var Logger *zap.Logger
 
 func init() {
-	// Initialize the logger
-	initLogger()
+	SetLogger()
 }
 
-func initLogger() {
-	// Define level-handling logic.
+// SetLogger sets up a logger with a specific configuration.
+func SetLogger() {
 	highPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= zapcore.ErrorLevel
 	})
@@ -24,46 +23,28 @@ func initLogger() {
 		return lvl < zapcore.ErrorLevel
 	})
 
-	// High-priority output should go to standard error, and low-priority
-	// output should go to standard out.
 	consoleDebugging := zapcore.Lock(os.Stdout)
 	consoleErrors := zapcore.Lock(os.Stderr)
 
-	// Optimize the console output for human operators.
-	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	consoleEncoder := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+		MessageKey:   "msg",
+		LevelKey:     "level",
+		TimeKey:      "time",
+		CallerKey:    "caller",
+		EncodeLevel:  zapcore.CapitalColorLevelEncoder,
+		EncodeTime:   zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
+		EncodeCaller: zapcore.ShortCallerEncoder,
+	})
 
-	// Combine the outputs, encoders, and level-handling functions into zapcore.Cores.
 	core := zapcore.NewTee(
 		zapcore.NewCore(consoleEncoder, consoleErrors, highPriority),
 		zapcore.NewCore(consoleEncoder, consoleDebugging, lowPriority),
 	)
 
-	// Construct a Logger from the zapcore.Core.
-	Logger = zap.New(core)
-}
-
-// SetLogger sets up a logger with a specific configuration.
-func SetLogger() {
-	config := zap.Config{
-		Encoding:    "console", // Use console encoding for human-readable logs
-		Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
-		OutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:   "msg",
-			LevelKey:     "level",
-			TimeKey:      "time",
-			CallerKey:    "caller",
-			EncodeLevel:  zapcore.CapitalColorLevelEncoder,
-			EncodeTime:   zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
-			EncodeCaller: zapcore.ShortCallerEncoder,
-		},
-	}
-
-	var err error
-	Logger, err = config.Build()
-	if err != nil {
-		panic(err)
-	}
+	// AddCallerSkip is crucial for correct file and line number reporting.
+	// When you wrap the zap logger in your own package, the caller information by default would point to your logging package rather than the actual calling site.
+	// AddCallerSkip(1) tells the logger to skip one level up the call stack, correctly identifying where the log was called from in your main application.
+	Logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 }
 
 // SyncLogger flushes any buffered log entries.
