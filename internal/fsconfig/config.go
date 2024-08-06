@@ -30,6 +30,7 @@ var MetaCfg MetaConfig
 
 // ParseConfig retrieves the required data and stores in MetaCfg
 func ParseConfig() (MetaConfig, error) {
+	customlog.Logger.Debug("parsing configuration data")
 
 	var localDir, bucket, prefix string
 
@@ -97,14 +98,14 @@ func getConfigValue(flagValue, envVar string) string {
 	return os.Getenv(envVar)
 }
 
-func getTimeUnit(unit string) time.Duration{
+func getTimeUnit(unit string) time.Duration {
 	// Default time unit is 'hour'
 	var timeUnit time.Duration = time.Hour
 
 	// Convert input to lowercase for case-insensitive comparison
 	unit = strings.ToLower(unit)
 
-	switch unit{
+	switch unit {
 	case "second", "seconds":
 		timeUnit = time.Second
 	case "minute", "minutes":
@@ -112,7 +113,7 @@ func getTimeUnit(unit string) time.Duration{
 	case "hour", "hours":
 		timeUnit = time.Hour
 	default:
-		customlog.Logger.Warn("Invalid or no time unit specified, defaulting to hour.")
+		customlog.Logger.Warn("invalid or no time unit specified, defaulting to hour")
 	}
 
 	return timeUnit

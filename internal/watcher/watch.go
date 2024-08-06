@@ -2,14 +2,15 @@ package watcher
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 
+	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 
 	"github.com/rjeczalik/notify"
 
+	"github.com/Praveen005/CloudKeeper/internal/customlog"
 	"github.com/Praveen005/CloudKeeper/internal/db"
 	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 )
@@ -32,6 +33,9 @@ func Watch(ctx context.Context) {
 	} else {
 		dirToWatch += "/..."
 	}
+	customlog.Logger.Debug("Setting up a watch on the directory",
+		zap.String("directory", dirToWatch),
+	)
 	// As and when any event occurs, it is stored in channel 'c'. It is of the type notify.EventInfo
 	if err := notify.Watch(dirToWatch, c, notify.InCreate, notify.Remove, notify.Write, notify.InMovedFrom, notify.InMovedTo); err != nil {
 		log.Fatal(err)
@@ -65,6 +69,7 @@ func Watch(ctx context.Context) {
 
 // DirectEvents funcion consumes events from channel 'c' and directs them to appropriate channels
 func DirectEvents(ctx context.Context, c, regularEvents, renameEvents chan notify.EventInfo) {
+	customlog.Logger.Debug("Directing events to respective channels")
 	for {
 		select {
 		case eventInfo := <-c:
@@ -76,6 +81,7 @@ func DirectEvents(ctx context.Context, c, regularEvents, renameEvents chan notif
 				renameEvents <- eventInfo
 			}
 		case <-ctx.Done():
+			customlog.Logger.Warn("[Inside DirectEvents] Context cancellation signal received. Shutting down gracefully.")
 			return
 		}
 	}
@@ -90,14 +96,21 @@ func HandleRegularEvents(ctx context.Context, regularEvents chan notify.EventInf
 			case notify.InCreate, notify.Write:
 
 				AddEvent(ei, "add")
-				fmt.Println("Regular file change event: ", ei.Path())
+				customlog.Logger.Info("Regular file change event",
+					zap.String("path", ei.Path()),
+					zap.String("event", ei.Event().String()),
+				)
 
 			case notify.Remove:
 
 				AddEvent(ei, "remove")
-				fmt.Println("Regular file change event: ", ei.Path())
+				customlog.Logger.Info("Regular file change event",
+					zap.String("path", ei.Path()),
+					zap.String("event", ei.Event().String()),
+				)
 			}
 		case <-ctx.Done():
+			customlog.Logger.Warn("[Inside HandleRegularEvents] Context cancellation signal received. Shutting down gracefully.")
 			return
 		}
 	}
@@ -121,16 +134,21 @@ func HandleRenameEvents(ctx context.Context, renameEvents chan notify.EventInfo)
 				info.From = ei.Path()
 
 				AddEvent(ei, "remove")
+				customlog.Logger.Info("File moved",
+					zap.String("from", info.From),
+				)
 
-				fmt.Println("File moved from: ", info.From)
 			case notify.InMovedTo:
 				info.To = ei.Path()
 
 				AddEvent(ei, "add")
-				fmt.Println("File moved to: ", info.To)
+				customlog.Logger.Info("File moved",
+					zap.String("to", info.To),
+				)
 			}
 
 		case <-ctx.Done():
+			customlog.Logger.Warn("[Inside HandleRenameEvents] Context cancellation signal received. Shutting down gracefully.")
 			return
 		}
 	}

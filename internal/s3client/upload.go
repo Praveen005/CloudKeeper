@@ -3,15 +3,16 @@ package s3client
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/Praveen005/CloudKeeper/internal/customlog"
 	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"go.uber.org/zap"
 )
 
 // S3Client is an interface for the S3 client, to make it testable(creating mocks)
@@ -22,9 +23,11 @@ type S3Client interface {
 
 // UploadToS3 walks through the local directory you specified, and backs it up to S3
 func UploadToS3(localDir string, bucket, prefix string) error {
+	customlog.Logger.Debug("starting file upload to s3")
+
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		log.Fatalf("[ERROR] failed to load configuration: %v", err)
+		return fmt.Errorf("failed to load configuration: %v", err)
 	}
 	// Create an S3 client
 	client := s3.NewFromConfig(cfg)
@@ -43,7 +46,7 @@ func UploadToS3(localDir string, bucket, prefix string) error {
 		// Open the file
 		file, err := os.Open(path)
 		if err != nil {
-			return fmt.Errorf("[ERROR] failed to open file %s: %v", path, err)
+			return fmt.Errorf("failed to open file %s: %v", path, err)
 		}
 		defer file.Close()
 
@@ -51,7 +54,7 @@ func UploadToS3(localDir string, bucket, prefix string) error {
 		// relativePath, err := filepath.Rel(localDir, path)
 		relativePath, err := filepath.Rel(fsconfig.MetaCfg.BackupDir, path)
 		if err != nil {
-			return fmt.Errorf("[ERROR] failed to get relative path : %v", err)
+			return fmt.Errorf("failed to get relative path : %v", err)
 		}
 		s3Key := filepath.Join(prefix, relativePath)
 
@@ -67,18 +70,21 @@ func UploadToS3(localDir string, bucket, prefix string) error {
 		// err = uploadDirectory(s3Client, localDir, bucket, prefix)
 
 		if err != nil {
-			return fmt.Errorf("[ERROR] error uploading files: %v", err)
+			return fmt.Errorf("error uploading files: %v", err)
 		}
 
-		fmt.Printf("uploaded %s to s3://%s/%s\n", path, bucket, s3Key)
+		customlog.Logger.Debug("File uploaded to S3",
+			zap.String("file", relativePath),
+			zap.String("bucket", bucket),
+			zap.String("s3Key", s3Key),
+		)
 		return nil
 	})
 
 	if err != nil {
-		log.Fatalf("Error during upload process: %v", err)
+		return fmt.Errorf("error during upload process: %v", err)
 	}
 
-	fmt.Println("\033[38;5;{51}mupload completed successfully!\033[0m")
 	return nil
 }
 
@@ -86,7 +92,7 @@ func UploadToS3(localDir string, bucket, prefix string) error {
 func DeleteFromS3(fileToDelete string) error {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		return err
+		return fmt.Errorf("error loading AWS configuration: %v", err)
 	}
 
 	// create s3 client
@@ -105,7 +111,7 @@ func DeleteFromS3(fileToDelete string) error {
 	*/
 	relativePath, err := filepath.Rel(fsconfig.MetaCfg.BackupDir, fileToDelete)
 	if err != nil {
-		return err
+		return fmt.Errorf("error resolving relative path: %v", err)
 	}
 	s3Key := filepath.Join(fsconfig.MetaCfg.S3Prefix, relativePath)
 	s3Key = strings.ReplaceAll(s3Key, "\\", "/") // Ensure forward slashes for S3 keys
@@ -113,15 +119,19 @@ func DeleteFromS3(fileToDelete string) error {
 	err = DeleteS3Directory(context.TODO(), client, s3Key)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting file(s): %v", err)
 	}
 
-	log.Println("Successfully deleted from S3: ", fileToDelete)
+	customlog.Logger.Info("All files successfully deleted from S3")
 	return nil
 }
 
 // DeleteS3Directory function, traverses through all the files in a directory marked to be deleted and deletes them
 func DeleteS3Directory(ctx context.Context, client S3Client, key string) error {
+	customlog.Logger.Debug("Fetching file(s) to delete from s3 bucket",
+		zap.String("s3key", key),
+	)
+
 	// specify the parameters for listing objects in the S3 bucket and filtering the results to only include objects whose keys start with a certain prefix.
 	listInput := &s3.ListObjectsV2Input{
 		Bucket: aws.String(fsconfig.MetaCfg.S3Bucket),
@@ -130,15 +140,15 @@ func DeleteS3Directory(ctx context.Context, client S3Client, key string) error {
 
 	// Run it till there is no more object to fetch from the bucket
 	for {
-		output, err := client.ListObjectsV2(ctx, listInput) // gets tou the objects from the bucket specified
+		output, err := client.ListObjectsV2(ctx, listInput) // gets you the objects from the bucket specified
 		if err != nil {
-			return err
+			return fmt.Errorf("error listing objects from s3: %v", err)
 		}
 
 		// Deletes files sequentially by calling DeleteS3Object function
 		for _, object := range output.Contents {
 			if err := DeleteS3Object(ctx, client, *object.Key); err != nil {
-				return err
+				return fmt.Errorf("error deleting the file: %v", err)
 			}
 		}
 
@@ -155,6 +165,9 @@ func DeleteS3Directory(ctx context.Context, client S3Client, key string) error {
 
 // DeleteS3Object function deletes a single object from s3
 func DeleteS3Object(ctx context.Context, client S3Client, key string) error {
+	customlog.Logger.Debug("Deleting a file from s3 bucket",
+		zap.String("file(s3key)", key),
+	)
 	_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(fsconfig.MetaCfg.S3Bucket),
 		Key:    aws.String(key),

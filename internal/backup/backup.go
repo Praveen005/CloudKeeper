@@ -2,7 +2,8 @@ package backup
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/Praveen005/CloudKeeper/internal/customlog"
@@ -15,22 +16,24 @@ import (
 // Backup function periodically calls the flushToS3 function to flush the data(files) to s3
 func Backup(ctx context.Context) {
 	ticker := time.NewTicker(fsconfig.MetaCfg.S3BackupInterval)
-	// fmt.Println("Inside backup function, backup interval: ", fsconfig.MetaCfg.BackupInterval)
-	customlog.Logger.Info("Inside backup function",
-		zap.String("backup_interval", fsconfig.MetaCfg.S3BackupInterval.String()))
+	customlog.Logger.Debug("Inside backup function",
+		zap.String("Backup Interval", fsconfig.MetaCfg.S3BackupInterval.String()))
 
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			// log.Println("[INFO] starting files updation in S3")
-			customlog.Logger.Debug("starting files updation in S3")
+			customlog.Logger.Debug("Ticker ticked: starting file(s) update to S3")
 
 			if err := FlushToS3(); err != nil {
-				log.Fatalf("backup failed: %v", err)
+				customlog.Logger.Error("Flushing data to s3 failed",
+					zap.String("error", err.Error()),
+				)
+				os.Exit(1)
 			}
-			log.Printf("[Info] Success! files updated in s3.")
+			customlog.Logger.Info("Success! all updates to s3 completed")
 		case <-ctx.Done():
+			customlog.Logger.Warn("[Inside Backup] Context cancellation signal received. Shutting down gracefully.")
 			return
 		}
 	}
@@ -40,8 +43,7 @@ func Backup(ctx context.Context) {
 func FlushToS3() error {
 	db, err := bolt.Open("filesToS3.db", 0666, &bolt.Options{Timeout: 2 * time.Minute})
 	if err != nil {
-		log.Println("[ERROR] error printing: ", err)
-		return err
+		return fmt.Errorf("failed to create/open database at the given path: %v", err)
 	}
 	defer db.Close()
 
@@ -59,8 +61,7 @@ func FlushToS3() error {
 			}
 
 			if err != nil {
-				log.Printf("[ERROR] Error processing file %s (action: %s): %v", fileName, action, err)
-				return err
+				return fmt.Errorf("error processing file %s (action: %s): %v", fileName, action, err)
 			}
 			// if successfully uploaded, delete from db
 			b.Delete(k)
@@ -69,8 +70,7 @@ func FlushToS3() error {
 		})
 		return err
 	}); err != nil {
-		return err
+		return fmt.Errorf("error updating database: %v", err)
 	}
-	log.Println("All updates to s3 completed successfully!")
 	return nil
 }

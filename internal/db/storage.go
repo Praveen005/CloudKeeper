@@ -2,12 +2,13 @@ package db
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/Praveen005/CloudKeeper/internal/customlog"
 	"github.com/Praveen005/CloudKeeper/internal/fsconfig"
-	"github.com/Praveen005/CloudKeeper/internal/utils"
+	// "github.com/Praveen005/CloudKeeper/internal/utils"
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 )
 
 // FileChangeEvent stores the action(add/remove) to be performed a given file path
@@ -33,16 +34,17 @@ func FlushToDB(ctx context.Context) {
 			if len(FilesToUpdate) == 0 { // If there is no metadata stored in-memory, just continue
 				continue
 			}
-			log.Println("[Info] Pushing data to DB")
+			customlog.Logger.Info("Ticker ticked: flushing data to the database")
 			err := PersistData()
 			if err != nil {
-				log.Println("[Error] error persisting the data: ", err)
+				customlog.Logger.Error("error storing data to database", zap.String("error", err.Error()))
 				return
 			}
-			log.Println("[Info] Data pushed successfully, printing now...")
-			utils.PrintData()
+			customlog.Logger.Info("Data pushed successfully to the database")
+			// utils.PrintData()
 			FilesToUpdate = make(map[string]FileChangeEvent) // Clear the map, since data has been persisted
 		case <-ctx.Done():
+			customlog.Logger.Warn("[Inside FlushToDB] Context cancellation signal received. Shutting down gracefully.")
 			return
 		}
 	}
@@ -50,6 +52,7 @@ func FlushToDB(ctx context.Context) {
 
 // PersistData function stores the metadata to database
 func PersistData() error {
+	customlog.Logger.Debug("Inside PersistData function: writing data to the database")
 	// creates and opens a database at the given path. If the file does not exist then it will be created automatically.
 	db, err := bolt.Open("filesToS3.db", 0666, &bolt.Options{Timeout: 2 * time.Minute})
 	if err != nil {
